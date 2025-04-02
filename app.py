@@ -8,7 +8,7 @@ from modules.market_anomaly import market_anomaly_scanner_module
 from modules.paper_trading import paper_trading_module
 from modules.dividend_analysis import dividend_analysis_module
 from modules.definitions import about_definitions_module
-from modules.home import home_page
+from utils.home import home_page
 
 # Ignore warnings
 warnings.filterwarnings('ignore')
