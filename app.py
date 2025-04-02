@@ -1,9 +1,7 @@
 import streamlit as st
 import warnings
-import pandas as pd
-import numpy as np
 
-# Import modules
+# Import local modules
 from modules.stock_analysis import stock_analysis_module
 from modules.options_analysis import options_analysis_module
 from modules.market_anomaly import market_anomaly_scanner_module
@@ -51,10 +49,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-#######################
 # Sidebar Navigation
-#######################
-
 st.sidebar.markdown('<p class="main-header">TradeSmart</p>', unsafe_allow_html=True)
 st.sidebar.markdown('<p class="info-text">Trading Analysis Platform</p>', unsafe_allow_html=True)
 
@@ -67,10 +62,6 @@ app_mode = st.sidebar.selectbox(
 
 # Disclaimer
 st.sidebar.markdown('<div class="disclaimer">⚠️ <b>Disclaimer:</b> This app is for educational purposes only. No trading strategy can guarantee returns. Always do your own due diligence before trading.</div>', unsafe_allow_html=True)
-
-#######################
-# Main Application
-#######################
 
 # Dictionary of modules
 modules = {
