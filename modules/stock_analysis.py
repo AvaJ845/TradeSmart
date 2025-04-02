@@ -59,69 +59,7 @@ def stock_analysis_module():
                     # Create tabs for different analyses
                     tab1, tab2, tab3, tab4 = st.tabs(["Price & Volume", "Technical Indicators", "Trading Signals", "Backtest"])
                     
-                    with tab4:
-                        # Backtest results
-                        portfolio, metrics = backtest_strategy(signals)
-                        
-                        if portfolio is not None and metrics is not None:
-                            # Display performance metrics
-                            st.markdown("### Backtest Performance")
-                            
-                            col1, col2, col3 = st.columns(3)
-                            col1.metric("Total Return", f"{metrics['Total Return']:.2f}%")
-                            col2.metric("Annual Return", f"{metrics['Annual Return (%)']:.2f}%")
-                            col3.metric("Sharpe Ratio", f"{metrics['Sharpe Ratio']:.2f}")
-                            
-                            col1, col2, col3 = st.columns(3)
-                            col1.metric("Final Value", f"${metrics['Final Value']:.2f}")
-                            col2.metric("Volatility", f"{metrics['Annual Volatility (%)']:.2f}%")
-                            col3.metric("Max Drawdown", f"{metrics['Max Drawdown (%)']:.2f}%")
-                            
-                            # Portfolio value over time
-                            fig = plot_portfolio_performance(portfolio, signals)
-                            st.plotly_chart(fig, use_container_width=True)
-                            
-                            # Comparison with buy-and-hold
-                            st.markdown("### Strategy Comparison")
-                            
-                            # Calculate buy and hold returns
-                            buy_hold_return = ((data['Close'].iloc[-1] / data['Close'].iloc[0]) - 1) * 100
-                            strategy_return = metrics['Total Return']
-                            
-                            # Create comparison chart
-                            comparison_data = {
-                                'Strategy': ['Buy and Hold', 'Trading Strategy'],
-                                'Return (%)': [buy_hold_return, strategy_return]
-                            }
-                            
-                            fig = go.Figure([
-                                go.Bar(
-                                    x=comparison_data['Strategy'],
-                                    y=comparison_data['Return (%)'],
-                                    marker_color=['lightblue', 'darkblue']
-                                )
-                            ])
-                            
-                            fig.update_layout(
-                                title="Strategy Comparison",
-                                xaxis_title="Strategy",
-                                yaxis_title="Return (%)",
-                                height=400
-                            )
-                            
-                            st.plotly_chart(fig, use_container_width=True)
-                            
-                            # Risk warning
-                            st.warning("""
-                            **Note**: Past performance is not indicative of future results. The backtest 
-                            results are based on historical data and do not account for market conditions, 
-                            slippage, or other real-world trading factors.
-                            """)
-                else:
-                    st.error("Could not calculate technical indicators with the provided data.")
-            else:
-                st.error(f"Could not fetch data for {ticker}. Please check the ticker symbol and try again.")
- tab1:
+                    with tab1:
                         # Price and volume chart
                         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
                                            vertical_spacing=0.1, 
@@ -192,7 +130,7 @@ def stock_analysis_module():
                         )
                         
                         st.plotly_chart(fig, use_container_width=True)
-                        
+                    
                     with tab2:
                         # Technical indicators visualization
                         # Create subtabs for different indicators
@@ -323,4 +261,61 @@ def stock_analysis_module():
                             
                             st.dataframe(recent_signals)
                     
-                    with
+                    with tab4:
+                        # Backtest results
+                        portfolio, metrics = backtest_strategy(signals)
+                        
+                        if portfolio is not None and metrics is not None:
+                            # Display performance metrics
+                            st.markdown("### Backtest Performance")
+                            
+                            col1, col2, col3, col4 = st.columns(4)
+                            col1.metric("Total Return", f"{metrics['Total Return']:.2f}%")
+                            col2.metric("Annual Return", f"{metrics['Annual Return (%)']:.2f}%")
+                            col3.metric("Sharpe Ratio", f"{metrics['Sharpe Ratio']:.2f}")
+                            col4.metric("Final Value", f"${metrics['Final Value']:.2f}")
+                            
+                            # Portfolio value over time
+                            fig = plot_portfolio_performance(portfolio, signals)
+                            st.plotly_chart(fig, use_container_width=True)
+                            
+                            # Comparison with buy-and-hold
+                            st.markdown("### Strategy Comparison")
+                            
+                            # Calculate buy and hold returns
+                            buy_hold_return = ((data['Close'].iloc[-1] / data['Close'].iloc[0]) - 1) * 100
+                            strategy_return = metrics['Total Return']
+                            
+                            # Create comparison chart
+                            comparison_data = {
+                                'Strategy': ['Buy and Hold', 'Trading Strategy'],
+                                'Return (%)': [buy_hold_return, strategy_return]
+                            }
+                            
+                            fig = go.Figure([
+                                go.Bar(
+                                    x=comparison_data['Strategy'],
+                                    y=comparison_data['Return (%)'],
+                                    marker_color=['lightblue', 'darkblue']
+                                )
+                            ])
+                            
+                            fig.update_layout(
+                                title="Strategy Comparison",
+                                xaxis_title="Strategy",
+                                yaxis_title="Return (%)",
+                                height=400
+                            )
+                            
+                            st.plotly_chart(fig, use_container_width=True)
+                            
+                            # Risk warning
+                            st.warning("""
+                            **Note**: Past performance is not indicative of future results. The backtest 
+                            results are based on historical data and do not account for market conditions, 
+                            slippage, or other real-world trading factors.
+                            """)
+                else:
+                    st.error("Could not calculate technical indicators with the provided data.")
+            else:
+                st.error(f"Could not fetch data for {ticker}. Please check the ticker symbol and try again.")
