@@ -68,7 +68,7 @@ def backtest_strategy(signals, initial_capital=10000, risk_per_trade=0.01):
     
     # Initialize portfolio tracking
     portfolio = pd.DataFrame(index=signals.index)
-    portfolio['Price'] = signals['Price']
+    portfolio['Price'] = signals['Price'].values.flatten()  # Ensure 1D array
     portfolio['Cash'] = initial_capital
     portfolio['Positions'] = 0
     portfolio['Total'] = initial_capital
@@ -109,19 +109,23 @@ def backtest_strategy(signals, initial_capital=10000, risk_per_trade=0.01):
         # Calculate total portfolio value
         portfolio.at[portfolio.index[i], 'Total'] = (
             portfolio.at[portfolio.index[i], 'Cash'] + 
-            portfolio.at[portfolio.index[i], 'Positions'] * signals['Price'].iloc[i]
+            portfolio.at[portfolio.index[i], 'Positions'] * portfolio.at[portfolio.index[i], 'Price']
         )
     
-    # Calculate performance metrics with proper numeric handling
-    returns = portfolio['Total'].pct_change()
-    sharpe_ratio = (returns.mean() * 252) / (returns.std() * np.sqrt(252)) if returns.std() > 0 else 0
+    # Calculate performance metrics with proper array handling
+    returns = portfolio['Total'].pct_change().fillna(0)
+    returns = returns.values.flatten()  # Ensure 1D array for calculations
+    
+    mean_return = np.mean(returns) if len(returns) > 0 else 0
+    std_return = np.std(returns) if len(returns) > 0 else 0
+    sharpe_ratio = (mean_return * 252) / (std_return * np.sqrt(252)) if std_return > 0 else 0
     
     metrics = {
         'Total Return': float(format(((portfolio['Total'].iloc[-1] / initial_capital) - 1) * 100, '.2f')),
-        'Annual Return (%)': float(format(returns.mean() * 252 * 100, '.2f')),
-        'Annual Volatility (%)': float(format(returns.std() * np.sqrt(252) * 100, '.2f')),
+        'Annual Return (%)': float(format(mean_return * 252 * 100, '.2f')),
+        'Annual Volatility (%)': float(format(std_return * np.sqrt(252) * 100, '.2f')),
         'Sharpe Ratio': float(format(sharpe_ratio, '.2f')),
-        'Max Drawdown (%)': float(format(calculate_max_drawdown(portfolio['Total']) * 100, '.2f')),
+        'Max Drawdown (%)': float(format(calculate_max_drawdown(portfolio['Total'].values.flatten()) * 100, '.2f')),
         'Final Value': float(format(portfolio['Total'].iloc[-1], '.2f'))
     }
     
