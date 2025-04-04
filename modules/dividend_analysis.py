@@ -274,11 +274,11 @@ def dividend_analysis_module():
                 # Display projection table
                 st.markdown("### Income Projection Table")
                 projection_df = pd.DataFrame(projection)
-                st.dataframe(projection_df.style.format({
-                    'Annual Income': '${:.2f}',
-                    'Cumulative Income': '${:.2f}',
-                    'Yield on Cost': '{:.2f}%'
-                }))
+                formatted_df = projection_df.copy()
+                formatted_df['Annual Income'] = formatted_df['Annual Income'].apply(lambda x: f'${x:,.2f}')
+                formatted_df['Cumulative Income'] = formatted_df['Cumulative Income'].apply(lambda x: f'${x:,.2f}')
+                formatted_df['Yield on Cost'] = formatted_df['Yield on Cost'].apply(lambda x: f'{x:.2f}%')
+                st.dataframe(formatted_df)
                 
                 st.markdown("""
                 **Note**: This projection assumes:
