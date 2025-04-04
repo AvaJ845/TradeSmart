@@ -274,11 +274,11 @@ def dividend_analysis_module():
                 # Display projection table
                 st.markdown("### Income Projection Table")
                 projection_df = pd.DataFrame(projection)
-                formatted_df = projection_df.copy()
-                formatted_df['Annual Income'] = formatted_df['Annual Income'].apply(lambda x: f'${x:,.2f}')
-                formatted_df['Cumulative Income'] = formatted_df['Cumulative Income'].apply(lambda x: f'${x:,.2f}')
-                formatted_df['Yield on Cost'] = formatted_df['Yield on Cost'].apply(lambda x: f'{x:.2f}%')
-                st.dataframe(formatted_df)
+                formatted_projection_df = projection_df.copy()
+                formatted_projection_df['Annual Income'] = formatted_projection_df['Annual Income'].apply(lambda x: f'${x:,.2f}')
+                formatted_projection_df['Cumulative Income'] = formatted_projection_df['Cumulative Income'].apply(lambda x: f'${x:,.2f}')
+                formatted_projection_df['Yield on Cost'] = formatted_projection_df['Yield on Cost'].apply(lambda x: f'{x:.2f}%')
+                st.dataframe(formatted_projection_df)
                 
                 st.markdown("""
                 **Note**: This projection assumes:
@@ -389,8 +389,8 @@ def dividend_analysis_module():
                         cagr_df = pd.DataFrame(growth_periods)
                         formatted_df = cagr_df.copy()
                         formatted_df['CAGR (%)'] = formatted_df['CAGR (%)'].apply(lambda x: f'{x:.2f}%')
-                        formatted_df['Start Dividend'] = formatted_df['Start Dividend'].apply(lambda x: f'${x:.4f}')
-                        formatted_df['End Dividend'] = formatted_df['End Dividend'].apply(lambda x: f'${x:.4f}')
+                        formatted_df['Start Dividend'] = formatted_df['Start Dividend'].apply(lambda x: f'${x:,.4f}')
+                        formatted_df['End Dividend'] = formatted_df['End Dividend'].apply(lambda x: f'${x:,.4f}')
                         st.dataframe(formatted_df)
                         
                         # Create CAGR comparison chart
