@@ -68,7 +68,7 @@ def backtest_strategy(signals, initial_capital=10000, risk_per_trade=0.01):
     
     try:
         # Check for trading activity
-        if signals['Strong_Buy'].sum() == 0 and signals['Strong_Sell'].sum() == 0:
+        if (signals['Strong_Buy'].sum() == 0) and (signals['Strong_Sell'].sum() == 0):
             print("No significant trading signals detected in the analysis period.")
             
         # Initialize portfolio tracking
@@ -90,7 +90,7 @@ def backtest_strategy(signals, initial_capital=10000, risk_per_trade=0.01):
             # Strong buy signal and no current position
             if signals['Strong_Buy'].iloc[i] and current_position == 0:
                 # Calculate position size based on risk management
-                available_capital = portfolio.iloc[i-1]['Cash']
+                available_capital = float(portfolio.iloc[i-1]['Cash'])  # Convert to float
                 risk_amount = min(available_capital * risk_per_trade, available_capital)
                 position_size = int(risk_amount / current_price)
                 
