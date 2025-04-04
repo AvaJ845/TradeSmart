@@ -387,11 +387,11 @@ def dividend_analysis_module():
                     # Display growth periods
                     if growth_periods:
                         cagr_df = pd.DataFrame(growth_periods)
-                        st.dataframe(cagr_df.style.format({
-                            'CAGR (%)': '{:.2f}%',
-                            'Start Dividend': '${:.4f}',
-                            'End Dividend': '${:.4f}'
-                        }))
+                        formatted_df = cagr_df.copy()
+                        formatted_df['CAGR (%)'] = formatted_df['CAGR (%)'].apply(lambda x: f'{x:.2f}%')
+                        formatted_df['Start Dividend'] = formatted_df['Start Dividend'].apply(lambda x: f'${x:.4f}')
+                        formatted_df['End Dividend'] = formatted_df['End Dividend'].apply(lambda x: f'${x:.4f}')
+                        st.dataframe(formatted_df)
                         
                         # Create CAGR comparison chart
                         fig = go.Figure()
