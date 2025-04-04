@@ -1,22 +1,31 @@
 import streamlit as st
 import warnings
-import traceback
-
-# Import local modules
-from modules.stock_analysis import stock_analysis_module
-from modules.options_analysis import options_analysis_module
-from modules.market_anomaly import market_anomaly_scanner_module
-from modules.paper_trading import paper_trading_module
-from modules.dividend_analysis import dividend_analysis_module
-from modules.definitions import about_definitions_module
-from utils.home import home_page
+from importlib import import_module
 
 # Ignore warnings
 warnings.filterwarnings('ignore')
-st.set_option('deprecation.showPyplotGlobalUse', None)
 
-# Set page config
+# Set page config first (must be called before any other Streamlit commands)
 st.set_page_config(page_title="TradeSmart", page_icon="📈", layout="wide")
+
+# Safe module imports with error handling
+def safe_import(module_name):
+    try:
+        return import_module(module_name)
+    except ImportError as e:
+        st.error(f"Failed to load module {module_name}: {str(e)}")
+        return None
+
+# Import modules
+modules = {
+    "Home": safe_import("utils.home").home_page,
+    "Stock Analysis": safe_import("modules.stock_analysis").stock_analysis_module,
+    "Options Analysis": safe_import("modules.options_analysis").options_analysis_module,
+    "Market Anomaly Scanner": safe_import("modules.market_anomaly").market_anomaly_scanner_module,
+    "Paper Trading Simulator": safe_import("modules.paper_trading").paper_trading_module,
+    "Dividend Analysis": safe_import("modules.dividend_analysis").dividend_analysis_module,
+    "About & Definitions": safe_import("modules.definitions").about_definitions_module
+}
 
 # Custom CSS
 st.markdown("""
@@ -69,21 +78,13 @@ app_mode = st.sidebar.selectbox(
 # Disclaimer
 st.sidebar.markdown('<div class="disclaimer">⚠️ <b>Disclaimer:</b> This app is for educational purposes only. No trading strategy can guarantee returns. Always do your own due diligence before trading.</div>', unsafe_allow_html=True)
 
-# Dictionary of modules
-modules = {
-    "Home": home_page,
-    "Stock Analysis": stock_analysis_module,
-    "Options Analysis": options_analysis_module,
-    "Market Anomaly Scanner": market_anomaly_scanner_module,
-    "Paper Trading Simulator": paper_trading_module,
-    "Dividend Analysis": dividend_analysis_module,
-    "About & Definitions": about_definitions_module
-}
-
 # Run the selected module with enhanced error handling
 try:
-    with st.spinner(f'Loading {app_mode} module...'):
-        modules[app_mode]()
+    if app_mode in modules and modules[app_mode]:
+        with st.spinner(f'Loading {app_mode} module...'):
+            modules[app_mode]()
+    else:
+        st.error(f"Module {app_mode} is not available")
 except Exception as e:
     st.error("⚠️ An error occurred!")
     st.error(f"Module: {app_mode}")

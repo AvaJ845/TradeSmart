@@ -1,6 +1,9 @@
 import pandas as pd
 import numpy as np
 import streamlit as st
+from datetime import datetime, timedelta
+from utils.data_fetcher import get_stock_data
+from utils.visualization import plot_portfolio_performance
 
 def simulate_paper_trade(data, strategy_type, initial_capital=10000):
     """
@@ -250,3 +253,7 @@ def paper_trading_module():
 # Export the module
 __all__ = ['PaperTradingModule', 'simulate_paper_trade', 'backtest_strategy', 'paper_trading_module']
 paper_trading_module = PaperTradingModule()
+
+# Make sure to define the module's main function
+if __name__ == "__main__":
+    paper_trading_module()

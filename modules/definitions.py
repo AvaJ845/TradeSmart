@@ -17,7 +17,7 @@ def about_definitions_module():
         "Dividend": "A distribution of a company's earnings to shareholders.",
         "Market Anomaly": "A distortion in the market that contradicts the efficient market hypothesis.",
         "Paper Trading": "Practice trading with virtual money to test strategies without risk."
-    }
+    }  # Make sure all braces are properly closed
     
     for term, definition in definitions.items():
         with st.expander(term):
