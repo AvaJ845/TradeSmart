@@ -67,6 +67,10 @@ def backtest_strategy(signals, initial_capital=10000, risk_per_trade=0.01):
         return None, None
     
     try:
+        # Check for trading activity
+        if signals['Strong_Buy'].sum() == 0 and signals['Strong_Sell'].sum() == 0:
+            print("No significant trading signals detected in the analysis period.")
+            
         # Initialize portfolio tracking
         portfolio = pd.DataFrame(index=signals.index)
         portfolio['Price'] = signals['Price']
