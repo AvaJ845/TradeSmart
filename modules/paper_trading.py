@@ -81,36 +81,38 @@ def backtest_strategy(signals, initial_capital=10000, risk_per_trade=0.01):
         for i in range(1, len(signals)):
             # Copy previous day's values
             portfolio.iloc[i] = portfolio.iloc[i-1]
+            current_price = signals['Price'].iloc[i]
             
             # Strong buy signal and no current position
             if signals['Strong_Buy'].iloc[i] and current_position == 0:
                 # Calculate position size based on risk management
-                risk_amount = portfolio.iloc[i-1]['Total'] * risk_per_trade
-                position_size = int(risk_amount / signals['Price'].iloc[i])
+                available_capital = portfolio.iloc[i-1]['Cash']
+                risk_amount = min(available_capital * risk_per_trade, available_capital)
+                position_size = int(risk_amount / current_price)
                 
-                # Enter long position
-                current_position = position_size
-                position_entry_price = signals['Price'].iloc[i]
-                
-                # Update portfolio
-                portfolio.at[portfolio.index[i], 'Positions'] = current_position
-                portfolio.at[portfolio.index[i], 'Cash'] -= current_position * position_entry_price
+                if position_size > 0:
+                    # Enter long position
+                    current_position = position_size
+                    position_entry_price = current_price
+                    trade_value = current_position * position_entry_price
+                    
+                    # Update portfolio
+                    portfolio.at[portfolio.index[i], 'Positions'] = current_position
+                    portfolio.at[portfolio.index[i], 'Cash'] -= trade_value
             
             # Strong sell signal and have a current position
             elif signals['Strong_Sell'].iloc[i] and current_position > 0:
-                # Calculate profit/loss
-                profit_loss = (signals['Price'].iloc[i] - position_entry_price) * current_position
-                
-                # Update portfolio
-                portfolio.at[portfolio.index[i], 'Cash'] += current_position * signals['Price'].iloc[i]
+                # Calculate profit/loss and close position
+                trade_value = current_position * current_price
+                portfolio.at[portfolio.index[i], 'Cash'] += trade_value
                 portfolio.at[portfolio.index[i], 'Positions'] = 0
                 current_position = 0
                 position_entry_price = 0
             
-            # Calculate total portfolio value
+            # Update mark-to-market portfolio value
             portfolio.at[portfolio.index[i], 'Total'] = (
                 portfolio.at[portfolio.index[i], 'Cash'] + 
-                portfolio.at[portfolio.index[i], 'Positions'] * portfolio.at[portfolio.index[i], 'Price']
+                portfolio.at[portfolio.index[i], 'Positions'] * current_price
             )
         
         # Calculate performance metrics safely
