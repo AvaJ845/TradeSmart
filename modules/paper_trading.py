@@ -66,70 +66,77 @@ def backtest_strategy(signals, initial_capital=10000, risk_per_trade=0.01):
     if signals is None or len(signals) == 0:
         return None, None
     
-    # Initialize portfolio tracking
-    portfolio = pd.DataFrame(index=signals.index)
-    portfolio['Price'] = signals['Price'].values.flatten()  # Ensure 1D array
-    portfolio['Cash'] = initial_capital
-    portfolio['Positions'] = 0
-    portfolio['Total'] = initial_capital
-    
-    # Trading parameters
-    current_position = 0
-    position_entry_price = 0
-    
-    for i in range(1, len(signals)):
-        # Copy previous day's values
-        portfolio.iloc[i] = portfolio.iloc[i-1]
+    try:
+        # Initialize portfolio tracking
+        portfolio = pd.DataFrame(index=signals.index)
+        portfolio['Price'] = signals['Price']
+        portfolio['Cash'] = initial_capital
+        portfolio['Positions'] = 0
+        portfolio['Total'] = initial_capital
         
-        # Strong buy signal and no current position
-        if signals['Strong_Buy'].iloc[i] and current_position == 0:
-            # Calculate position size based on risk management
-            risk_amount = portfolio.iloc[i-1]['Total'] * risk_per_trade
-            position_size = int(risk_amount / signals['Price'].iloc[i])
-            
-            # Enter long position
-            current_position = position_size
-            position_entry_price = signals['Price'].iloc[i]
-            
-            # Update portfolio
-            portfolio.at[portfolio.index[i], 'Positions'] = current_position
-            portfolio.at[portfolio.index[i], 'Cash'] -= current_position * position_entry_price
+        # Trading parameters
+        current_position = 0
+        position_entry_price = 0
         
-        # Strong sell signal and have a current position
-        elif signals['Strong_Sell'].iloc[i] and current_position > 0:
-            # Calculate profit/loss
-            profit_loss = (signals['Price'].iloc[i] - position_entry_price) * current_position
+        for i in range(1, len(signals)):
+            # Copy previous day's values
+            portfolio.iloc[i] = portfolio.iloc[i-1]
             
-            # Update portfolio
-            portfolio.at[portfolio.index[i], 'Cash'] += current_position * signals['Price'].iloc[i]
-            portfolio.at[portfolio.index[i], 'Positions'] = 0
-            current_position = 0
-            position_entry_price = 0
+            # Strong buy signal and no current position
+            if signals['Strong_Buy'].iloc[i] and current_position == 0:
+                # Calculate position size based on risk management
+                risk_amount = portfolio.iloc[i-1]['Total'] * risk_per_trade
+                position_size = int(risk_amount / signals['Price'].iloc[i])
+                
+                # Enter long position
+                current_position = position_size
+                position_entry_price = signals['Price'].iloc[i]
+                
+                # Update portfolio
+                portfolio.at[portfolio.index[i], 'Positions'] = current_position
+                portfolio.at[portfolio.index[i], 'Cash'] -= current_position * position_entry_price
+            
+            # Strong sell signal and have a current position
+            elif signals['Strong_Sell'].iloc[i] and current_position > 0:
+                # Calculate profit/loss
+                profit_loss = (signals['Price'].iloc[i] - position_entry_price) * current_position
+                
+                # Update portfolio
+                portfolio.at[portfolio.index[i], 'Cash'] += current_position * signals['Price'].iloc[i]
+                portfolio.at[portfolio.index[i], 'Positions'] = 0
+                current_position = 0
+                position_entry_price = 0
+            
+            # Calculate total portfolio value
+            portfolio.at[portfolio.index[i], 'Total'] = (
+                portfolio.at[portfolio.index[i], 'Cash'] + 
+                portfolio.at[portfolio.index[i], 'Positions'] * portfolio.at[portfolio.index[i], 'Price']
+            )
         
-        # Calculate total portfolio value
-        portfolio.at[portfolio.index[i], 'Total'] = (
-            portfolio.at[portfolio.index[i], 'Cash'] + 
-            portfolio.at[portfolio.index[i], 'Positions'] * portfolio.at[portfolio.index[i], 'Price']
-        )
-    
-    # Calculate performance metrics with proper array handling
-    returns = portfolio['Total'].pct_change().fillna(0)
-    returns = returns.values.flatten()  # Ensure 1D array for calculations
-    
-    mean_return = np.mean(returns) if len(returns) > 0 else 0
-    std_return = np.std(returns) if len(returns) > 0 else 0
-    sharpe_ratio = (mean_return * 252) / (std_return * np.sqrt(252)) if std_return > 0 else 0
-    
-    metrics = {
-        'Total Return': float(format(((portfolio['Total'].iloc[-1] / initial_capital) - 1) * 100, '.2f')),
-        'Annual Return (%)': float(format(mean_return * 252 * 100, '.2f')),
-        'Annual Volatility (%)': float(format(std_return * np.sqrt(252) * 100, '.2f')),
-        'Sharpe Ratio': float(format(sharpe_ratio, '.2f')),
-        'Max Drawdown (%)': float(format(calculate_max_drawdown(portfolio['Total'].values.flatten()) * 100, '.2f')),
-        'Final Value': float(format(portfolio['Total'].iloc[-1], '.2f'))
-    }
-    
-    return portfolio, metrics
+        # Calculate performance metrics safely
+        returns = portfolio['Total'].pct_change().fillna(0)
+        mean_return = returns.mean()
+        std_return = returns.std()
+        sharpe_ratio = (mean_return * 252) / (std_return * np.sqrt(252)) if std_return > 0 else 0
+        max_dd = calculate_max_drawdown(portfolio['Total'])
+        final_value = portfolio['Total'].iloc[-1]
+        total_return = ((final_value / initial_capital) - 1) * 100
+        
+        # Format metrics safely
+        metrics = {
+            'Total Return': round(total_return, 2),
+            'Annual Return (%)': round(mean_return * 252 * 100, 2),
+            'Annual Volatility (%)': round(std_return * np.sqrt(252) * 100, 2),
+            'Sharpe Ratio': round(sharpe_ratio, 2),
+            'Max Drawdown (%)': round(max_dd * 100, 2),
+            'Final Value': round(final_value, 2)
+        }
+        
+        return portfolio, metrics
+        
+    except Exception as e:
+        print(f"Backtest error: {str(e)}")
+        return None, None
 
 def calculate_max_drawdown(series):
     """
@@ -199,11 +206,11 @@ class PaperTradingModule:
                 'timestamp': pd.Timestamp.now(),
                 'symbol': symbol,
                 'type': trade_type,
-                'price': float(format(price, '.2f')),
+                'price': round(price, 2),
                 'quantity': quantity,
-                'value': float(format(trade_value, '.2f')),
-                'balance_before': float(format(balance_before, '.2f')),
-                'balance_after': float(format(self.account_balance, '.2f'))
+                'value': round(trade_value, 2),
+                'balance_before': round(balance_before, 2),
+                'balance_after': round(self.account_balance, 2)
             }])
             
             self.trade_history = pd.concat([self.trade_history, new_trade])
