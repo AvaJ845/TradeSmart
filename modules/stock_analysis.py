@@ -78,11 +78,12 @@ def stock_analysis_module():
                             row=1, col=1
                         )
                         
-                        # Add Moving Averages with squeeze() to ensure 1D data
+                        # Add Moving Averages 
+                        # Modified to handle 2D arrays correctly
                         fig.add_trace(
                             go.Scatter(
                                 x=indicators.index,
-                                y=indicators['MA20'].values.squeeze(),  # modified
+                                y=indicators['MA20'].values.ravel(),  # ravel() instead of squeeze()
                                 name="MA20",
                                 line=dict(color='blue', width=1)
                             ),
@@ -92,7 +93,7 @@ def stock_analysis_module():
                         fig.add_trace(
                             go.Scatter(
                                 x=indicators.index,
-                                y=indicators['MA50'].values.squeeze(),  # modified
+                                y=indicators['MA50'].values.ravel(),  # ravel() instead of squeeze()
                                 name="MA50",
                                 line=dict(color='red', width=1)
                             ),
@@ -102,7 +103,7 @@ def stock_analysis_module():
                         fig.add_trace(
                             go.Scatter(
                                 x=indicators.index,
-                                y=indicators['MA200'].values.squeeze(),  # modified
+                                y=indicators['MA200'].values.ravel(),  # ravel() instead of squeeze()
                                 name="MA200",
                                 line=dict(color='green', width=1)
                             ),
@@ -279,7 +280,7 @@ def stock_analysis_module():
                             fig = plot_portfolio_performance(portfolio, signals)
                             st.plotly_chart(fig, use_container_width=True)
                             
-                            # Comparison with buy-and-hold
+                            # Comparison with buy and hold
                             st.markdown("### Strategy Comparison")
                             
                             # Calculate buy and hold returns
