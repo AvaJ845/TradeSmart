@@ -74,5 +74,9 @@ modules = {
     "About & Definitions": about_definitions_module
 }
 
-# Run the selected module
-modules[app_mode]()
+# Run the selected module with error handling
+try:
+    modules[app_mode]()
+except Exception as e:
+    st.error(f"Error loading module {app_mode}: {str(e)}")
+    st.info("Please make sure all required modules are properly installed and configured.")
