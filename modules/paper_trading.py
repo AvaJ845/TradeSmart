@@ -54,26 +54,31 @@ def simulate_paper_trade(data, strategy_type, initial_capital=10000):
 def backtest_strategy(signals, initial_capital=10000, risk_per_trade=0.01):
     """
     Backtest a trading strategy based on generated signals
-    
-    Parameters:
-    signals (pd.DataFrame): DataFrame with trading signals
-    initial_capital (float): Starting capital for the backtest
-    risk_per_trade (float): Percentage of capital to risk per trade
-    
-    Returns:
-    tuple: (portfolio_performance, performance_metrics)
     """
-    if signals is None or len(signals) == 0:
+    # Validate inputs
+    if not isinstance(signals, pd.DataFrame) or signals.empty:
+        print("Invalid or empty signals DataFrame")
+        return None, None
+    
+    required_columns = ['Price', 'Strong_Buy', 'Strong_Sell']
+    if not all(col in signals.columns for col in required_columns):
+        print("Missing required columns in signals DataFrame")
         return None, None
     
     try:
         # Check for trading activity
-        if (signals['Strong_Buy'].sum() == 0) and (signals['Strong_Sell'].sum() == 0):
+        has_trades = any([
+            signals['Strong_Buy'].any(),
+            signals['Strong_Sell'].any()
+        ])
+        
+        if not has_trades:
             print("No significant trading signals detected in the analysis period.")
+            return None, None
             
         # Initialize portfolio tracking
         portfolio = pd.DataFrame(index=signals.index)
-        portfolio['Price'] = signals['Price']
+        portfolio['Price'] = signals['Price'].fillna(method='ffill')
         portfolio['Cash'] = initial_capital
         portfolio['Positions'] = 0
         portfolio['Total'] = initial_capital
@@ -82,42 +87,56 @@ def backtest_strategy(signals, initial_capital=10000, risk_per_trade=0.01):
         current_position = 0
         position_entry_price = 0
         
+        # Ensure signals are boolean
+        signals['Strong_Buy'] = signals['Strong_Buy'].fillna(False).astype(bool)
+        signals['Strong_Sell'] = signals['Strong_Sell'].fillna(False).astype(bool)
+        
         for i in range(1, len(signals)):
-            # Copy previous day's values
-            portfolio.iloc[i] = portfolio.iloc[i-1]
-            current_price = signals['Price'].iloc[i]
-            
-            # Strong buy signal and no current position
-            if signals['Strong_Buy'].iloc[i] and current_position == 0:
-                # Calculate position size based on risk management
-                available_capital = float(portfolio.iloc[i-1]['Cash'])  # Convert to float
-                risk_amount = min(available_capital * risk_per_trade, available_capital)
-                position_size = int(risk_amount / current_price)
+            try:
+                # Copy previous day's values
+                portfolio.iloc[i] = portfolio.iloc[i-1]
+                current_price = float(signals['Price'].iloc[i])
                 
-                if position_size > 0:
-                    # Enter long position
-                    current_position = position_size
-                    position_entry_price = current_price
-                    trade_value = current_position * position_entry_price
+                if pd.isna(current_price) or current_price <= 0:
+                    continue
+                
+                # Strong buy signal and no current position
+                if signals['Strong_Buy'].iloc[i] and current_position == 0:
+                    available_capital = float(portfolio.iloc[i-1]['Cash'])
+                    if available_capital <= 0:
+                        continue
+                        
+                    risk_amount = min(available_capital * risk_per_trade, available_capital)
+                    position_size = int(risk_amount / current_price)
                     
-                    # Update portfolio
-                    portfolio.at[portfolio.index[i], 'Positions'] = current_position
-                    portfolio.at[portfolio.index[i], 'Cash'] -= trade_value
+                    if position_size > 0:
+                        # Enter long position
+                        current_position = position_size
+                        position_entry_price = current_price
+                        trade_value = current_position * position_entry_price
+                        
+                        # Update portfolio
+                        portfolio.at[portfolio.index[i], 'Positions'] = current_position
+                        portfolio.at[portfolio.index[i], 'Cash'] -= trade_value
+                
+                # Strong sell signal and have a current position
+                elif signals['Strong_Sell'].iloc[i] and current_position > 0:
+                    # Calculate profit/loss and close position
+                    trade_value = current_position * current_price
+                    portfolio.at[portfolio.index[i], 'Cash'] += trade_value
+                    portfolio.at[portfolio.index[i], 'Positions'] = 0
+                    current_position = 0
+                    position_entry_price = 0
+                
+                # Update mark-to-market portfolio value
+                portfolio.at[portfolio.index[i], 'Total'] = (
+                    portfolio.at[portfolio.index[i], 'Cash'] + 
+                    portfolio.at[portfolio.index[i], 'Positions'] * current_price
+                )
             
-            # Strong sell signal and have a current position
-            elif signals['Strong_Sell'].iloc[i] and current_position > 0:
-                # Calculate profit/loss and close position
-                trade_value = current_position * current_price
-                portfolio.at[portfolio.index[i], 'Cash'] += trade_value
-                portfolio.at[portfolio.index[i], 'Positions'] = 0
-                current_position = 0
-                position_entry_price = 0
-            
-            # Update mark-to-market portfolio value
-            portfolio.at[portfolio.index[i], 'Total'] = (
-                portfolio.at[portfolio.index[i], 'Cash'] + 
-                portfolio.at[portfolio.index[i], 'Positions'] * current_price
-            )
+            except Exception as e:
+                print(f"Error processing iteration {i}: {str(e)}")
+                continue
         
         # Calculate performance metrics safely
         returns = portfolio['Total'].pct_change().fillna(0)
