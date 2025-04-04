@@ -1,163 +1,141 @@
-import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
 import numpy as np
-from datetime import datetime, timedelta
 
-from utils.data_fetcher import get_stock_data
-from utils.backtest import simulate_paper_trade
-from utils.visualization import plot_portfolio_performance
+def simulate_paper_trade(data, strategy_type, initial_capital=10000):
+    """
+    Simulate paper trading based on different strategy types
+    
+    Parameters:
+    data (pd.DataFrame): OHLCV DataFrame with price data
+    strategy_type (str): Type of strategy to simulate
+    initial_capital (float): Starting capital for simulation
+    
+    Returns:
+    tuple: (portfolio_performance, performance_metrics)
+    """
+    from utils.indicators import calculate_technical_indicators, get_trading_signals
+    
+    # Calculate indicators
+    indicators = calculate_technical_indicators(data)
+    if indicators is None:
+        return None, None
+        
+    # Get signals based on strategy type
+    if strategy_type == "Technical Indicators":
+        signals = get_trading_signals(indicators)
+    elif strategy_type == "Moving Average Crossover":
+        # Simple MA crossover strategy
+        signals = pd.DataFrame(index=data.index)
+        signals['Price'] = data['Close']
+        signals['Strong_Buy'] = (indicators['MA20'] > indicators['MA50']) & (indicators['MA20'].shift(1) <= indicators['MA50'].shift(1))
+        signals['Strong_Sell'] = (indicators['MA20'] < indicators['MA50']) & (indicators['MA20'].shift(1) >= indicators['MA50'].shift(1))
+    elif strategy_type == "RSI Strategy":
+        # RSI strategy
+        signals = pd.DataFrame(index=data.index)
+        signals['Price'] = data['Close']
+        signals['Strong_Buy'] = (indicators['RSI'] < 30) & (indicators['RSI'].shift(1) < 30) & (indicators['RSI'] > indicators['RSI'].shift(1))
+        signals['Strong_Sell'] = (indicators['RSI'] > 70) & (indicators['RSI'].shift(1) > 70) & (indicators['RSI'] < indicators['RSI'].shift(1))
+    elif strategy_type == "MACD Strategy":
+        # MACD strategy
+        signals = pd.DataFrame(index=data.index)
+        signals['Price'] = data['Close']
+        signals['Strong_Buy'] = (indicators['MACD'] > indicators['MACD_Signal']) & (indicators['MACD'].shift(1) <= indicators['MACD_Signal'].shift(1))
+        signals['Strong_Sell'] = (indicators['MACD'] < indicators['MACD_Signal']) & (indicators['MACD'].shift(1) >= indicators['MACD_Signal'].shift(1))
+    else:
+        return None, None
+    
+    # Run backtest with the signals
+    return backtest_strategy(signals, initial_capital)
 
-def paper_trading_module():
+def backtest_strategy(signals, initial_capital=10000, risk_per_trade=0.01):
     """
-    Paper Trading module for simulating strategies without risking real money
+    Backtest a trading strategy based on generated signals
+    
+    Parameters:
+    signals (pd.DataFrame): DataFrame with trading signals
+    initial_capital (float): Starting capital for the backtest
+    risk_per_trade (float): Percentage of capital to risk per trade
+    
+    Returns:
+    tuple: (portfolio_performance, performance_metrics)
     """
-    st.markdown('<p class="main-header">Paper Trading Simulator</p>', unsafe_allow_html=True)
+    if signals is None or len(signals) == 0:
+        return None, None
     
-    st.markdown("""
-    Test trading strategies without risking real capital. This simulator allows you to
-    backtest strategies on historical data and track hypothetical performance.
-    """)
+    # Initialize portfolio tracking
+    portfolio = pd.DataFrame(index=signals.index)
+    portfolio['Price'] = signals['Price']
+    portfolio['Cash'] = initial_capital
+    portfolio['Positions'] = 0
+    portfolio['Total'] = initial_capital
     
-    # Create tabs for different paper trading sections
-    tab1, tab2, tab3 = st.tabs(["Strategy Backtesting", "Manual Trading Simulator", "Paper Portfolio"])
+    # Trading parameters
+    current_position = 0
+    position_entry_price = 0
     
-    with tab1:
-        st.markdown("### Strategy Backtesting")
+    for i in range(1, len(signals)):
+        # Previous row's values
+        prev_price = signals['Price'].iloc[i-1]
+        current_price = signals['Price'].iloc[i]
         
-        # Input parameters
-        col1, col2, col3 = st.columns(3)
+        # Copy previous day's values
+        portfolio.iloc[i] = portfolio.iloc[i-1]
         
-        with col1:
-            ticker = st.text_input("Enter Ticker Symbol", "AAPL", key="backtest_ticker")
+        # Strong buy signal and no current position
+        if signals['Strong_Buy'].iloc[i] and current_position == 0:
+            # Calculate position size based on risk management
+            risk_amount = portfolio.iloc[i-1]['Total'] * risk_per_trade
+            position_size = int(risk_amount / current_price)
+            
+            # Enter long position
+            current_position = position_size
+            position_entry_price = current_price
+            
+            # Update portfolio
+            portfolio.iloc[i]['Positions'] = current_position
+            portfolio.iloc[i]['Cash'] -= current_position * current_price
         
-        with col2:
-            strategy = st.selectbox(
-                "Select Trading Strategy",
-                options=["Technical Indicators", "Moving Average Crossover", "RSI Strategy", "MACD Strategy"]
-            )
+        # Strong sell signal and have a current position
+        elif signals['Strong_Sell'].iloc[i] and current_position > 0:
+            # Calculate profit/loss
+            profit_loss = (current_price - position_entry_price) * current_position
+            
+            # Update portfolio
+            portfolio.iloc[i]['Cash'] += current_position * current_price
+            portfolio.iloc[i]['Positions'] = 0
+            current_position = 0
+            position_entry_price = 0
         
-        with col3:
-            period = st.selectbox(
-                "Backtest Period",
-                options=["1mo", "3mo", "6mo", "1y", "2y", "5y"],
-                index=3
-            )
-        
-        # Capital settings
-        initial_capital = st.slider("Initial Capital ($)", 
-                                    min_value=1000, 
-                                    max_value=100000, 
-                                    value=10000, 
-                                    step=1000)
-        
-        if st.button("Run Backtest"):
-            with st.spinner("Running backtest..."):
-                # Get data
-                data = get_stock_data(ticker, period=period)
-                
-                if data is not None and len(data) > 0:
-                    # Run simulation
-                    portfolio, metrics = simulate_paper_trade(data, strategy, initial_capital)
-                    
-                    if portfolio is not None and metrics is not None:
-                        # Display performance metrics
-                        st.markdown("### Backtest Results")
-                        
-                        col1, col2, col3 = st.columns(3)
-                        col1.metric("Total Return", f"{metrics['Total Return']:.2f}%")
-                        col2.metric("Annual Return", f"{metrics['Annual Return (%)']:.2f}%")
-                        col3.metric("Sharpe Ratio", f"{metrics['Sharpe Ratio']:.2f}")
-                        
-                        col1, col2, col3 = st.columns(3)
-                        col1.metric("Final Portfolio Value", f"${metrics['Final Value']:.2f}")
-                        col2.metric("Volatility", f"{metrics['Annual Volatility (%)']:.2f}%")
-                        col3.metric("Max Drawdown", f"{metrics['Max Drawdown (%)']:.2f}%")
-                        
-                        # Plot portfolio value
-                        fig = plot_portfolio_performance(portfolio)
-                        st.plotly_chart(fig, use_container_width=True)
-                        
-                        # Display trade history
-                        st.markdown("### Trade History")
-                        
-                        # Create trade history from portfolio data
-                        trades = []
-                        for i in range(1, len(portfolio)):
-                            if portfolio['Positions'].iloc[i] != portfolio['Positions'].iloc[i-1]:
-                                if portfolio['Positions'].iloc[i] > portfolio['Positions'].iloc[i-1]:
-                                    action = "BUY"
-                                else:
-                                    action = "SELL"
-                                
-                                trades.append({
-                                    'Date': portfolio.index[i],
-                                    'Action': action,
-                                    'Price': data['Close'].iloc[i],
-                                    'Position Size': abs(portfolio['Positions'].iloc[i] - portfolio['Positions'].iloc[i-1]),
-                                    'Portfolio Value': portfolio['Total'].iloc[i]
-                                })
-                        
-                        if trades:
-                            trades_df = pd.DataFrame(trades)
-                            st.dataframe(trades_df)
-                        else:
-                            st.info("No trades were executed during the backtest period.")
-                        
-                        # Risk warning
-                        st.warning("""
-                        **Note**: Past performance is not indicative of future results. Backtest 
-                        results are based on historical data and do not account for market conditions, 
-                        slippage, or other real-world trading factors.
-                        """)
-                    else:
-                        st.error("Could not simulate trades with the selected strategy.")
-                else:
-                    st.error(f"Could not fetch data for {ticker}.")
+        # Calculate total portfolio value
+        portfolio.iloc[i]['Total'] = (
+            portfolio.iloc[i]['Cash'] + 
+            portfolio.iloc[i]['Positions'] * current_price
+        )
     
-    with tab2:
-        st.markdown("### Manual Trading Simulator")
-        st.markdown("""
-        This simulator is under development. In the future, it will allow you to manually 
-        place simulated trades on real-time or slightly delayed market data.
-        
-        Features coming soon:
-        - Manual trade entry and exit
-        - Real-time portfolio tracking
-        - P&L analysis
-        - Risk metrics
-        - Performance comparison against benchmarks
-        """)
-        
-        st.info("This module is coming soon. Check back for updates!")
+    # Calculate performance metrics
+    returns = portfolio['Total'].pct_change()
     
-    with tab3:
-        st.markdown("### Paper Portfolio Tracker")
-        st.markdown("""
-        This feature is under development. It will allow you to create and track paper trading
-        portfolios over time, with features including:
-        
-        - Multiple portfolio support
-        - Diversification analysis
-        - Sector allocation
-        - Performance attribution
-        - Benchmark comparison
-        - Export and sharing options
-        """)
-        
-        st.info("This module is coming soon. Check back for updates!")
+    metrics = {
+        'Total Return': ((portfolio['Total'].iloc[-1] / initial_capital) - 1) * 100,
+        'Annual Return (%)': returns.mean() * 252 * 100,
+        'Annual Volatility (%)': returns.std() * np.sqrt(252) * 100,
+        'Sharpe Ratio': (returns.mean() * 252) / (returns.std() * np.sqrt(252)),
+        'Max Drawdown (%)': calculate_max_drawdown(portfolio['Total']) * 100,
+        'Final Value': portfolio['Total'].iloc[-1]
+    }
     
-    st.markdown("""
-    ### About Paper Trading
+    return portfolio, metrics
+
+def calculate_max_drawdown(series):
+    """
+    Calculate the maximum drawdown of a portfolio value series
     
-    Paper trading is the practice of simulated trading with virtual money to test strategies
-    without risking real capital. Benefits include:
+    Parameters:
+    series (pd.Series): Portfolio value series
     
-    - **Risk-Free Learning**: Develop trading skills without financial consequences
-    - **Strategy Testing**: Validate trading strategies before committing real capital
-    - **Psychology Development**: Learn to manage emotions associated with trading
-    - **Market Familiarity**: Gain experience with market mechanics and order types
-    
-    Paper trading is an essential step before live trading, but remember that it doesn't
-    perfectly replicate the psychological aspects of risking real money.
-    """)
+    Returns:
+    float: Maximum drawdown as a decimal
+    """
+    cumulative_max = series.cummax()
+    drawdown = (series - cumulative_max) / cumulative_max
+    return drawdown.min()
