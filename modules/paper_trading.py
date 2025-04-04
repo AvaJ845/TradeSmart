@@ -112,17 +112,17 @@ def backtest_strategy(signals, initial_capital=10000, risk_per_trade=0.01):
             portfolio.at[portfolio.index[i], 'Positions'] * signals['Price'].iloc[i]
         )
     
-    # Calculate performance metrics
+    # Calculate performance metrics with proper numeric handling
     returns = portfolio['Total'].pct_change()
     sharpe_ratio = (returns.mean() * 252) / (returns.std() * np.sqrt(252)) if returns.std() > 0 else 0
     
     metrics = {
-        'Total Return': ((portfolio['Total'].iloc[-1] / initial_capital) - 1) * 100,
-        'Annual Return (%)': returns.mean() * 252 * 100,
-        'Annual Volatility (%)': returns.std() * np.sqrt(252) * 100,
-        'Sharpe Ratio': sharpe_ratio,
-        'Max Drawdown (%)': calculate_max_drawdown(portfolio['Total']) * 100,
-        'Final Value': portfolio['Total'].iloc[-1]
+        'Total Return': float(format(((portfolio['Total'].iloc[-1] / initial_capital) - 1) * 100, '.2f')),
+        'Annual Return (%)': float(format(returns.mean() * 252 * 100, '.2f')),
+        'Annual Volatility (%)': float(format(returns.std() * np.sqrt(252) * 100, '.2f')),
+        'Sharpe Ratio': float(format(sharpe_ratio, '.2f')),
+        'Max Drawdown (%)': float(format(calculate_max_drawdown(portfolio['Total']) * 100, '.2f')),
+        'Final Value': float(format(portfolio['Total'].iloc[-1], '.2f'))
     }
     
     return portfolio, metrics
@@ -195,11 +195,11 @@ class PaperTradingModule:
                 'timestamp': pd.Timestamp.now(),
                 'symbol': symbol,
                 'type': trade_type,
-                'price': price,
+                'price': float(format(price, '.2f')),
                 'quantity': quantity,
-                'value': trade_value,
-                'balance_before': balance_before,
-                'balance_after': self.account_balance
+                'value': float(format(trade_value, '.2f')),
+                'balance_before': float(format(balance_before, '.2f')),
+                'balance_after': float(format(self.account_balance, '.2f'))
             }])
             
             self.trade_history = pd.concat([self.trade_history, new_trade])
