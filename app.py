@@ -1,5 +1,6 @@
 import streamlit as st
 import warnings
+import traceback
 
 # Import local modules
 from modules.stock_analysis import stock_analysis_module
@@ -12,7 +13,7 @@ from utils.home import home_page
 
 # Ignore warnings
 warnings.filterwarnings('ignore')
-st.set_option('deprecation.showPyplotGlobalUse', False)
+st.set_option('deprecation.showPyplotGlobalUse', None)
 
 # Set page config
 st.set_page_config(page_title="TradeSmart", page_icon="📈", layout="wide")
@@ -49,6 +50,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Initialize session state if not already done
+if 'initialized' not in st.session_state:
+    st.session_state.initialized = True
+    st.session_state.last_error = None
+
 # Sidebar Navigation
 st.sidebar.markdown('<p class="main-header">TradeSmart</p>', unsafe_allow_html=True)
 st.sidebar.markdown('<p class="info-text">Trading Analysis Platform</p>', unsafe_allow_html=True)
@@ -74,9 +80,15 @@ modules = {
     "About & Definitions": about_definitions_module
 }
 
-# Run the selected module with error handling
+# Run the selected module with enhanced error handling
 try:
-    modules[app_mode]()
+    with st.spinner(f'Loading {app_mode} module...'):
+        modules[app_mode]()
 except Exception as e:
-    st.error(f"Error loading module {app_mode}: {str(e)}")
-    st.info("Please make sure all required modules are properly installed and configured.")
+    st.error("⚠️ An error occurred!")
+    st.error(f"Module: {app_mode}")
+    st.error(f"Error: {str(e)}")
+    if st.checkbox("Show detailed error trace"):
+        st.code(traceback.format_exc())
+    st.session_state.last_error = str(e)
+    st.info("💡 Try refreshing the page or selecting a different module.")
