@@ -78,11 +78,11 @@ def stock_analysis_module():
                             row=1, col=1
                         )
                         
-                        # Add Moving Averages
+                        # Add Moving Averages with squeeze() to ensure 1D data
                         fig.add_trace(
                             go.Scatter(
                                 x=indicators.index,
-                                y=indicators['MA20'],
+                                y=indicators['MA20'].values.squeeze(),  # modified
                                 name="MA20",
                                 line=dict(color='blue', width=1)
                             ),
@@ -92,7 +92,7 @@ def stock_analysis_module():
                         fig.add_trace(
                             go.Scatter(
                                 x=indicators.index,
-                                y=indicators['MA50'],
+                                y=indicators['MA50'].values.squeeze(),  # modified
                                 name="MA50",
                                 line=dict(color='red', width=1)
                             ),
@@ -102,7 +102,7 @@ def stock_analysis_module():
                         fig.add_trace(
                             go.Scatter(
                                 x=indicators.index,
-                                y=indicators['MA200'],
+                                y=indicators['MA200'].values.squeeze(),  # modified
                                 name="MA200",
                                 line=dict(color='green', width=1)
                             ),
